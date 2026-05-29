@@ -51,19 +51,29 @@ pytest
 
 ### pytest 预期结果说明
 
-当前代码中故意保留了一个需求 11 的缺陷：后端会错误信任客户端传入的 `final_amount`，而不是始终根据商品单价、购买数量、库存和运费规则重新计算最终金额。
+测试文件 `backend/tests/test_cartflow_aligned.py` 包含 **36 个测试用例**，覆盖所有 13 条需求及 HTTP 接口契约，由 AutoTestDesign 工具设计生成并经过人工审核对齐。
 
-因此执行全部 pytest 时，预期会出现 2 个失败用例：
+其中针对需求 11（防客户端篡改金额）的 2 个测试用例（TC-26、TC-27）使用 `@pytest.mark.xfail(strict=True)` 标记。执行全部 pytest 时预期结果：
 
-```text
-tests/test_checkout.py::test_client_final_amount_is_ignored
-tests/test_requirements.py::test_r11_client_final_amount_must_be_ignored
-```
+- **34 通过**（PASSED）
+- **2 预期失败**（XFAIL）— 即 TC-26、TC-27，因代码中故意保留的缺陷而失败
 
-这两个失败用例用于证明自动化测试能够发现需求 11 的实现缺陷。可以单独运行相关测试：
+可单独运行需求 11 相关测试：
 
 ```powershell
-pytest -k final_amount -vv
+pytest -k "REQ11" -vv
 ```
 
-若修复需求 11，系统应忽略客户端传入的 `final_amount`，并返回服务端重新计算出的最终金额。
+若修复需求 11，这 2 个 xfail 测试将自动变为 PASSED。若移除了 xfail 标记但缺陷未修复，它们会以 FAILED 形式呈现。
+
+## 测试文档
+
+AutoTestDesign 工具输出的完整测试设计文档位于 `file/` 目录下：
+
+| 路径 | 说明 |
+|------|------|
+| `file/docs/测试计划.md` | 测试计划，包括范围、策略、资源与进度 |
+| `file/docs/详细测试设计与执行文档.md` | 详细测试设计、用例描述与执行说明 |
+| `file/docs/风险分析报告.md` | 测试风险分析与应对措施 |
+| `file/output/CartFlow-电商购物车结算模块_full_export.xlsx` | 完整导出（Excel 格式） |
+| `file/output/CartFlow-电商购物车结算模块_full_export.json` | 完整导出（JSON 格式） |
