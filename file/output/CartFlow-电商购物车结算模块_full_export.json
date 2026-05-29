@@ -1,0 +1,925 @@
+{
+  "app_name": "CartFlow-电商购物车结算模块",
+  "requirements": [
+    {
+      "requirement_id": "REQ-1",
+      "description": "系统应支持用户对一个或多个商品进行结算，每个商品必须包含商品单价、购买数量和当前库存信息。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-2",
+      "description": "系统必须验证购物车和每个商品的输入合法性：购物车不能为空；商品单价必须大于0；购买数量必须为整数且大于0；购买数量不能超过当前库存。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-3",
+      "description": "若购物车为空、商品单价非法、购买数量非法或库存不足，系统应拒绝结算并显示对应的错误信息，如“购物车不能为空”“商品单价非法”“购买数量非法”“库存不足”。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-4",
+      "description": "系统应根据每个商品的单价和购买数量计算商品小计（商品小计 = 商品单价 × 购买数量），并将所有商品小计相加得到订单原价。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-5",
+      "description": "系统应根据订单原价计算运费：当订单原价大于或等于200元时免收运费，否则收取10元运费。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-6",
+      "description": "系统必须按照“输入校验→商品小计计算→订单原价计算→运费计算→最终金额计算”的顺序完成结算；若输入校验失败，应立即终止结算流程并返回失败状态，不进行后续金额计算。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-7",
+      "description": "最终应付金额 = 订单原价 + 运费；最终应付金额不能小于0，且金额结果应保留两位小数。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-8",
+      "description": "当所有商品信息合法、库存充足且金额计算正常时，系统应允许结算成功，并返回订单原价、运费、最终应付金额和结算成功状态。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-9",
+      "description": "当购物车为空、商品单价非法、购买数量非法、库存不足或金额计算异常时，系统应拒绝结算，返回结算失败状态，并保留购物车内容。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-10",
+      "description": "购物车结算过程应包含“待结算、校验中、结算成功、结算失败”四种状态；用户提交结算请求后状态由“待结算”变为“校验中”；校验全部通过后变为“结算成功”；任一校验失败后变为“结算失败”。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-11",
+      "description": "系统不得直接信任客户端传入的最终金额，最终金额必须由系统根据商品单价、购买数量、库存和运费规则重新计算。",
+      "type": "functional"
+    },
+    {
+      "requirement_id": "REQ-12",
+      "description": "单个购物车结算请求的处理时间应少于200毫秒。",
+      "type": "performance"
+    },
+    {
+      "requirement_id": "REQ-13",
+      "description": "对于相同的输入，系统应返回稳定且一致的计算结果。",
+      "type": "consistency"
+    }
+  ],
+  "risk_analysis": [
+    {
+      "requirement_id": "REQ-1",
+      "risk_score": 8,
+      "priority": "High",
+      "reason": "Core checkout functionality; failure blocks entire purchase flow."
+    },
+    {
+      "requirement_id": "REQ-2",
+      "risk_score": 9,
+      "priority": "High",
+      "reason": "Input validation critical to prevent invalid transactions and ensure data integrity."
+    },
+    {
+      "requirement_id": "REQ-3",
+      "risk_score": 6,
+      "priority": "Medium",
+      "reason": "Error messages important for user guidance but not as critical as core validation."
+    },
+    {
+      "requirement_id": "REQ-4",
+      "risk_score": 9,
+      "priority": "High",
+      "reason": "Accurate price calculation essential for financial correctness."
+    },
+    {
+      "requirement_id": "REQ-5",
+      "risk_score": 8,
+      "priority": "High",
+      "reason": "Shipping fee logic impacts final cost; errors cause over/undercharging."
+    },
+    {
+      "requirement_id": "REQ-6",
+      "risk_score": 9,
+      "priority": "High",
+      "reason": "Enforcing correct order of operations prevents invalid data processing."
+    },
+    {
+      "requirement_id": "REQ-7",
+      "risk_score": 9,
+      "priority": "High",
+      "reason": "Final amount calculation must be precise to avoid financial discrepancies."
+    },
+    {
+      "requirement_id": "REQ-8",
+      "risk_score": 8,
+      "priority": "High",
+      "reason": "Successful checkout flow is core functionality."
+    },
+    {
+      "requirement_id": "REQ-9",
+      "risk_score": 7,
+      "priority": "High",
+      "reason": "Failure handling ensures no data loss and proper user feedback."
+    },
+    {
+      "requirement_id": "REQ-10",
+      "risk_score": 8,
+      "priority": "High",
+      "reason": "State management ensures correct flow and prevents inconsistent states."
+    },
+    {
+      "requirement_id": "REQ-11",
+      "risk_score": 10,
+      "priority": "High",
+      "reason": "Trusting client-side data could lead to financial fraud; server-side validation is a security must."
+    },
+    {
+      "requirement_id": "REQ-12",
+      "risk_score": 5,
+      "priority": "Medium",
+      "reason": "Performance requirement; failure degrades UX but not data integrity."
+    },
+    {
+      "requirement_id": "REQ-13",
+      "risk_score": 7,
+      "priority": "High",
+      "reason": "Consistency crucial for user trust and system reliability."
+    }
+  ],
+  "coverage_items": [
+    {
+      "coverage_id": "CI-01",
+      "coverage_item": "结算时包含一个商品且信息完整",
+      "related_req": "REQ-1"
+    },
+    {
+      "coverage_id": "CI-02",
+      "coverage_item": "结算时包含多个商品且信息完整",
+      "related_req": "REQ-1"
+    },
+    {
+      "coverage_id": "CI-03",
+      "coverage_item": "购物车为空",
+      "related_req": "REQ-2"
+    },
+    {
+      "coverage_id": "CI-04",
+      "coverage_item": "商品单价为0",
+      "related_req": "REQ-2"
+    },
+    {
+      "coverage_id": "CI-05",
+      "coverage_item": "购买数量为小数",
+      "related_req": "REQ-2"
+    },
+    {
+      "coverage_id": "CI-06",
+      "coverage_item": "购买数量超过库存",
+      "related_req": "REQ-2"
+    },
+    {
+      "coverage_id": "CI-07",
+      "coverage_item": "购物车为空时显示错误信息“购物车不能为空”",
+      "related_req": "REQ-3"
+    },
+    {
+      "coverage_id": "CI-08",
+      "coverage_item": "商品单价非法时显示错误信息“商品单价非法”",
+      "related_req": "REQ-3"
+    },
+    {
+      "coverage_id": "CI-09",
+      "coverage_item": "库存不足时显示错误信息“库存不足”",
+      "related_req": "REQ-3"
+    },
+    {
+      "coverage_id": "CI-10",
+      "coverage_item": "单个商品小计计算正确 (单价×数量)",
+      "related_req": "REQ-4"
+    },
+    {
+      "coverage_id": "CI-11",
+      "coverage_item": "多个商品小计求和正确",
+      "related_req": "REQ-4"
+    },
+    {
+      "coverage_id": "CI-12",
+      "coverage_item": "订单原价=200时免运费",
+      "related_req": "REQ-5"
+    },
+    {
+      "coverage_id": "CI-13",
+      "coverage_item": "订单原价=199.99时收取10元运费",
+      "related_req": "REQ-5"
+    },
+    {
+      "coverage_id": "CI-14",
+      "coverage_item": "订单原价=200.01时免运费",
+      "related_req": "REQ-5"
+    },
+    {
+      "coverage_id": "CI-15",
+      "coverage_item": "输入校验失败后终止结算，不进行金额计算",
+      "related_req": "REQ-6"
+    },
+    {
+      "coverage_id": "CI-16",
+      "coverage_item": "输入校验通过后按顺序计算小计、原价、运费、最终金额",
+      "related_req": "REQ-6"
+    },
+    {
+      "coverage_id": "CI-17",
+      "coverage_item": "最终应付金额=订单原价+运费 (例如订单原价150，运费10，最终160)",
+      "related_req": "REQ-7"
+    },
+    {
+      "coverage_id": "CI-18",
+      "coverage_item": "最终金额保留两位小数 (例如10.5应显示为10.50)",
+      "related_req": "REQ-7"
+    },
+    {
+      "coverage_id": "CI-19",
+      "coverage_item": "结算成功返回订单原价、运费、最终应付金额和成功状态",
+      "related_req": "REQ-8"
+    },
+    {
+      "coverage_id": "CI-20",
+      "coverage_item": "结算成功时所有计算结果正确",
+      "related_req": "REQ-8"
+    },
+    {
+      "coverage_id": "CI-21",
+      "coverage_item": "结算失败返回失败状态并保留购物车内容",
+      "related_req": "REQ-9"
+    },
+    {
+      "coverage_id": "CI-22",
+      "coverage_item": "多种失败条件同时存在时返回失败状态",
+      "related_req": "REQ-9"
+    },
+    {
+      "coverage_id": "CI-23",
+      "coverage_item": "提交结算请求后状态从“待结算”变为“校验中”",
+      "related_req": "REQ-10"
+    },
+    {
+      "coverage_id": "CI-24",
+      "coverage_item": "校验通过后状态变为“结算成功”",
+      "related_req": "REQ-10"
+    },
+    {
+      "coverage_id": "CI-25",
+      "coverage_item": "校验失败后状态变为“结算失败”",
+      "related_req": "REQ-10"
+    },
+    {
+      "coverage_id": "CI-26",
+      "coverage_item": "客户端传入的最终金额被忽略，系统使用重新计算的值",
+      "related_req": "REQ-11"
+    },
+    {
+      "coverage_id": "CI-27",
+      "coverage_item": "即使客户端传入错误金额，系统依旧正确计算",
+      "related_req": "REQ-11"
+    },
+    {
+      "coverage_id": "CI-28",
+      "coverage_item": "单个购物车结算请求响应时间小于200毫秒（单商品）",
+      "related_req": "REQ-12"
+    },
+    {
+      "coverage_id": "CI-29",
+      "coverage_item": "多个商品（如50个）结算请求响应时间小于200毫秒",
+      "related_req": "REQ-12"
+    },
+    {
+      "coverage_id": "CI-30",
+      "coverage_item": "相同输入重复请求3次，结果一致",
+      "related_req": "REQ-13"
+    },
+    {
+      "coverage_id": "CI-31",
+      "coverage_item": "相同输入在不同时间请求，结果一致",
+      "related_req": "REQ-13"
+    }
+  ],
+  "test_strategies": [
+    {
+      "coverage_id": "CI-01",
+      "coverage_item": "结算时包含一个商品且信息完整",
+      "related_req": "REQ-1",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-02",
+      "coverage_item": "结算时包含多个商品且信息完整",
+      "related_req": "REQ-1",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-03",
+      "coverage_item": "购物车为空",
+      "related_req": "REQ-2",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-04",
+      "coverage_item": "商品单价为0",
+      "related_req": "REQ-2",
+      "test_method": "Boundary Value Analysis"
+    },
+    {
+      "coverage_id": "CI-05",
+      "coverage_item": "购买数量为小数",
+      "related_req": "REQ-2",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-06",
+      "coverage_item": "购买数量超过库存",
+      "related_req": "REQ-2",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-07",
+      "coverage_item": "购物车为空时显示错误信息“购物车不能为空”",
+      "related_req": "REQ-3",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-08",
+      "coverage_item": "商品单价非法时显示错误信息“商品单价非法”",
+      "related_req": "REQ-3",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-09",
+      "coverage_item": "库存不足时显示错误信息“库存不足”",
+      "related_req": "REQ-3",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-10",
+      "coverage_item": "单个商品小计计算正确 (单价×数量)",
+      "related_req": "REQ-4",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-11",
+      "coverage_item": "多个商品小计求和正确",
+      "related_req": "REQ-4",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-12",
+      "coverage_item": "订单原价=200时免运费",
+      "related_req": "REQ-5",
+      "test_method": "Boundary Value Analysis"
+    },
+    {
+      "coverage_id": "CI-13",
+      "coverage_item": "订单原价=199.99时收取10元运费",
+      "related_req": "REQ-5",
+      "test_method": "Boundary Value Analysis"
+    },
+    {
+      "coverage_id": "CI-14",
+      "coverage_item": "订单原价=200.01时免运费",
+      "related_req": "REQ-5",
+      "test_method": "Boundary Value Analysis"
+    },
+    {
+      "coverage_id": "CI-15",
+      "coverage_item": "输入校验失败后终止结算，不进行金额计算",
+      "related_req": "REQ-6",
+      "test_method": "Decision Table"
+    },
+    {
+      "coverage_id": "CI-16",
+      "coverage_item": "输入校验通过后按顺序计算小计、原价、运费、最终金额",
+      "related_req": "REQ-6",
+      "test_method": "Decision Table"
+    },
+    {
+      "coverage_id": "CI-17",
+      "coverage_item": "最终应付金额=订单原价+运费 (例如订单原价150，运费10，最终160)",
+      "related_req": "REQ-7",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-18",
+      "coverage_item": "最终金额保留两位小数 (例如10.5应显示为10.50)",
+      "related_req": "REQ-7",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-19",
+      "coverage_item": "结算成功返回订单原价、运费、最终应付金额和成功状态",
+      "related_req": "REQ-8",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-20",
+      "coverage_item": "结算成功时所有计算结果正确",
+      "related_req": "REQ-8",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-21",
+      "coverage_item": "结算失败返回失败状态并保留购物车内容",
+      "related_req": "REQ-9",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-22",
+      "coverage_item": "多种失败条件同时存在时返回失败状态",
+      "related_req": "REQ-9",
+      "test_method": "Decision Table"
+    },
+    {
+      "coverage_id": "CI-23",
+      "coverage_item": "提交结算请求后状态从“待结算”变为“校验中”",
+      "related_req": "REQ-10",
+      "test_method": "State Transition Testing"
+    },
+    {
+      "coverage_id": "CI-24",
+      "coverage_item": "校验通过后状态变为“结算成功”",
+      "related_req": "REQ-10",
+      "test_method": "State Transition Testing"
+    },
+    {
+      "coverage_id": "CI-25",
+      "coverage_item": "校验失败后状态变为“结算失败”",
+      "related_req": "REQ-10",
+      "test_method": "State Transition Testing"
+    },
+    {
+      "coverage_id": "CI-26",
+      "coverage_item": "客户端传入的最终金额被忽略，系统使用重新计算的值",
+      "related_req": "REQ-11",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-27",
+      "coverage_item": "即使客户端传入错误金额，系统依旧正确计算",
+      "related_req": "REQ-11",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-28",
+      "coverage_item": "单个购物车结算请求响应时间小于200毫秒（单商品）",
+      "related_req": "REQ-12",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-29",
+      "coverage_item": "多个商品（如50个）结算请求响应时间小于200毫秒",
+      "related_req": "REQ-12",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-30",
+      "coverage_item": "相同输入重复请求3次，结果一致",
+      "related_req": "REQ-13",
+      "test_method": "Equivalence Partitioning"
+    },
+    {
+      "coverage_id": "CI-31",
+      "coverage_item": "相同输入在不同时间请求，结果一致",
+      "related_req": "REQ-13",
+      "test_method": "Equivalence Partitioning"
+    }
+  ],
+  "testcases": [
+    {
+      "tc_id": "TC-01",
+      "req_id": "REQ-1",
+      "coverage_id": "CI-01",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "User is logged in, has a non-empty shopping cart with one valid product (e.g., product A with unit price 100.00, quantity 2, stock 10).",
+      "test_data": "Cart: [{product_id: 'P001', unit_price: 100.00, quantity: 2, stock: 10}]",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement' button"
+      ],
+      "expected_result": "System validates the single product successfully, proceeds to calculation, returns settlement success with correct order_original_price (200.00), shipping_fee (0.00 as >=200), final_amount (200.00), and status '结算成功'."
+    },
+    {
+      "tc_id": "TC-02",
+      "req_id": "REQ-1",
+      "coverage_id": "CI-02",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "User is logged in, shopping cart contains multiple valid products (e.g., product A: unit_price=50, qty=2, stock=10; product B: unit_price=30, qty=3, stock=5).",
+      "test_data": "Cart: [{'pid':'P01','price':50.00,'qty':2,'stock':10}, {'pid':'P02','price':30.00,'qty':3,'stock':5}]",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System calculates product subtotals (100.00, 90.00), order_original_price=190.00, shipping fee=10.00 (since <200), final_amount=200.00, status success."
+    },
+    {
+      "tc_id": "TC-03",
+      "req_id": "REQ-2",
+      "coverage_id": "CI-03",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "User is logged in, shopping cart is empty.",
+      "test_data": "Cart: []",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System rejects settlement immediately, returns status '结算失败', error message '购物车不能为空', and cart remains empty."
+    },
+    {
+      "tc_id": "TC-04",
+      "req_id": "REQ-2",
+      "coverage_id": "CI-04",
+      "test_method": "Boundary Value Analysis",
+      "priority": "High",
+      "preconditions": "User is logged in, shopping cart contains one product with unit_price = 0 (invalid).",
+      "test_data": "Cart: [{'pid':'P01','price':0.00,'qty':1,'stock':100}]",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System rejects settlement, error message '商品单价非法', status '结算失败'. No calculations performed."
+    },
+    {
+      "tc_id": "TC-05",
+      "req_id": "REQ-2",
+      "coverage_id": "CI-05",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "User is logged in, cart contains a product with quantity = 2.5 (decimal, invalid).",
+      "test_data": "Cart: [{'pid':'P01','price':10.00,'qty':2.5,'stock':10}]",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System rejects settlement, error message '购买数量非法', status '结算失败'."
+    },
+    {
+      "tc_id": "TC-06",
+      "req_id": "REQ-2",
+      "coverage_id": "CI-06",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "User is logged in, cart contains a product with quantity = 20 but stock = 10 (exceeds stock).",
+      "test_data": "Cart: [{'pid':'P01','price':10.00,'qty':20,'stock':10}]",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System rejects settlement, error message '库存不足', status '结算失败'."
+    },
+    {
+      "tc_id": "TC-07",
+      "req_id": "REQ-3",
+      "coverage_id": "CI-07",
+      "test_method": "Equivalence Partitioning",
+      "priority": "Medium",
+      "preconditions": "User is logged in, cart is empty.",
+      "test_data": "Cart: []",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System displays error message '购物车不能为空' and status '结算失败'."
+    },
+    {
+      "tc_id": "TC-08",
+      "req_id": "REQ-3",
+      "coverage_id": "CI-08",
+      "test_method": "Equivalence Partitioning",
+      "priority": "Medium",
+      "preconditions": "User is logged in, cart has one product with unit_price = -5 (illegal).",
+      "test_data": "Cart: [{'pid':'P01','price':-5.00,'qty':1,'stock':10}]",
+      "steps": [
+        "Navigate to checkout page",
+        "Click 'Submit Settlement'"
+      ],
+      "expected_result": "System displays error message '商品单价非法' and settlement fails."
+    },
+    {
+      "tc_id": "TC-09",
+      "req_id": "REQ-3",
+      "coverage_id": "CI-09",
+      "test_method": "Equivalence Partitioning",
+      "priority": "Medium",
+      "preconditions": "Cart product qty > stock. Example: qty=5, stock=3.",
+      "test_data": "Cart: [{'pid':'P01','price':20.00,'qty':5,'stock':3}]",
+      "steps": [
+        "Navigate to checkout",
+        "Click submit"
+      ],
+      "expected_result": "Error message '库存不足' displayed, status '结算失败'."
+    },
+    {
+      "tc_id": "TC-10",
+      "req_id": "REQ-4",
+      "coverage_id": "CI-10",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Single product in cart: price=12.50, qty=4, stock=10.",
+      "test_data": "Cart: [{'pid':'P01','price':12.50,'qty':4,'stock':10}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Product subtotal computed as 50.00 (12.50*4). Order_original_price=50.00, shipping=10.00, final=60.00. Success."
+    },
+    {
+      "tc_id": "TC-11",
+      "req_id": "REQ-4",
+      "coverage_id": "CI-11",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Multiple products: A (price=10, qty=3, subtotal=30), B (price=25, qty=2, subtotal=50).",
+      "test_data": "Cart: [{'pid':'P01','price':10.00,'qty':3,'stock':10}, {'pid':'P02','price':25.00,'qty':2,'stock':5}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Sum of subtotals = 80.00. Order_original_price=80.00, shipping=10.00, final=90.00."
+    },
+    {
+      "tc_id": "TC-12",
+      "req_id": "REQ-5",
+      "coverage_id": "CI-12",
+      "test_method": "Boundary Value Analysis",
+      "priority": "High",
+      "preconditions": "Order original price exactly 200.00 (e.g., one product price=200, qty=1, stock=5).",
+      "test_data": "Cart: [{'pid':'P01','price':200.00,'qty':1,'stock':5}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Shipping fee = 0.00. Final amount = 200.00."
+    },
+    {
+      "tc_id": "TC-13",
+      "req_id": "REQ-5",
+      "coverage_id": "CI-13",
+      "test_method": "Boundary Value Analysis",
+      "priority": "High",
+      "preconditions": "Order original price = 199.99 (e.g., price=199.99, qty=1).",
+      "test_data": "Cart: [{'pid':'P01','price':199.99,'qty':1,'stock':5}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Shipping fee = 10.00. Final amount = 209.99."
+    },
+    {
+      "tc_id": "TC-14",
+      "req_id": "REQ-5",
+      "coverage_id": "CI-14",
+      "test_method": "Boundary Value Analysis",
+      "priority": "High",
+      "preconditions": "Order original price = 200.01.",
+      "test_data": "Cart: [{'pid':'P01','price':200.01,'qty':1,'stock':5}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Shipping fee = 0.00, final = 200.01."
+    },
+    {
+      "tc_id": "TC-15",
+      "req_id": "REQ-6",
+      "coverage_id": "CI-15",
+      "test_method": "Decision Table",
+      "priority": "High",
+      "preconditions": "User has invalid product (e.g., price illegal) AND also has other valid products. But validation fails on first product.",
+      "test_data": "Cart: [{'pid':'P01','price':0,'qty':1,'stock':10}, {'pid':'P02','price':10,'qty':1,'stock':10}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Input validation fails at first product (price=0). System returns '商品单价非法', status '结算失败', and does NOT proceed to any calculation (no subtotal, no order price computed)."
+    },
+    {
+      "tc_id": "TC-16",
+      "req_id": "REQ-6",
+      "coverage_id": "CI-16",
+      "test_method": "Decision Table",
+      "priority": "High",
+      "preconditions": "All products valid (e.g., product A price=50 qty=2 stock=10).",
+      "test_data": "Cart: [{'pid':'P01','price':50.00,'qty':2,'stock':10}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Input validation passes. System then calculates subtotal (100), order_original_price (100), shipping (10), final (110). Returns success with all values."
+    },
+    {
+      "tc_id": "TC-17",
+      "req_id": "REQ-7",
+      "coverage_id": "CI-17",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Order original price = 150.00, shipping applied = 10.00.",
+      "test_data": "Cart: [{'pid':'P01','price':150.00,'qty':1,'stock':10}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Final amount = 160.00 (150+10)."
+    },
+    {
+      "tc_id": "TC-18",
+      "req_id": "REQ-7",
+      "coverage_id": "CI-18",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Order original price = 10.50, shipping = 10.00, final should be 20.50.",
+      "test_data": "Cart: [{'pid':'P01','price':10.50,'qty':1,'stock':10}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Final amount displayed as 20.50 (two decimal places)."
+    },
+    {
+      "tc_id": "TC-19",
+      "req_id": "REQ-8",
+      "coverage_id": "CI-19",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Valid cart with one product: price=100, qty=2, stock=5.",
+      "test_data": "Cart: [{'pid':'P01','price':100.00,'qty':2,'stock':5}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Response contains: order_original_price=200.00, shipping_fee=0.00, final_amount=200.00, status='结算成功'."
+    },
+    {
+      "tc_id": "TC-20",
+      "req_id": "REQ-8",
+      "coverage_id": "CI-20",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Multiple products: A price=30 qty=3 (subtotal 90), B price=40 qty=2 (subtotal 80). Total=170 <200 so shipping=10.",
+      "test_data": "Cart: [{'pid':'P01','price':30,'qty':3,'stock':10}, {'pid':'P02','price':40,'qty':2,'stock':8}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "All calculations correct: subtotals 90 and 80, order=170, shipping=10, final=180. Status success."
+    },
+    {
+      "tc_id": "TC-21",
+      "req_id": "REQ-9",
+      "coverage_id": "CI-21",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Cart contains one invalid product (e.g., qty > stock). Also there are valid items; but overall failure.",
+      "test_data": "Cart: [{'pid':'P01','price':10,'qty':100,'stock':2}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "Settlement fails, status '结算失败', error message '库存不足'. After failure, shopping cart content remains unchanged (including the invalid product) and is not cleared."
+    },
+    {
+      "tc_id": "TC-22",
+      "req_id": "REQ-9",
+      "coverage_id": "CI-22",
+      "test_method": "Decision Table",
+      "priority": "High",
+      "preconditions": "Cart with multiple failures: empty cart AND price illegal? Actually empty cart is a single failure; but we can have price=0 and qty=0. Better: price=0 and qty>stock.",
+      "test_data": "Cart: [{'pid':'P01','price':0,'qty':5,'stock':3}]",
+      "steps": [
+        "Submit settlement"
+      ],
+      "expected_result": "System detects first failure (price=0) and returns error '商品单价非法'. Does not check subsequent failures. Status '结算失败', cart preserved."
+    },
+    {
+      "tc_id": "TC-23",
+      "req_id": "REQ-10",
+      "coverage_id": "CI-23",
+      "test_method": "State Transition Testing",
+      "priority": "High",
+      "preconditions": "User has a valid cart, initially in '待结算' state.",
+      "test_data": "Cart: [{'pid':'P01','price':10,'qty':1,'stock':5}]",
+      "steps": [
+        "Observe initial state (should be '待结算')",
+        "Submit settlement request"
+      ],
+      "expected_result": "After submission, state immediately changes from '待结算' to '校验中' (system is validating)."
+    },
+    {
+      "tc_id": "TC-24",
+      "req_id": "REQ-10",
+      "coverage_id": "CI-24",
+      "test_method": "State Transition Testing",
+      "priority": "High",
+      "preconditions": "User with valid cart, state becomes '校验中' after submission.",
+      "test_data": "Cart: [{'pid':'P01','price':10,'qty':1,'stock':5}]",
+      "steps": [
+        "Submit settlement",
+        "Wait for validation to complete (all checks pass)"
+      ],
+      "expected_result": "State transitions from '校验中' to '结算成功'."
+    },
+    {
+      "tc_id": "TC-25",
+      "req_id": "REQ-10",
+      "coverage_id": "CI-25",
+      "test_method": "State Transition Testing",
+      "priority": "High",
+      "preconditions": "User with invalid cart (e.g., price=0), initial state '待结算'.",
+      "test_data": "Cart: [{'pid':'P01','price':0,'qty':1,'stock':5}]",
+      "steps": [
+        "Submit settlement",
+        "Validation fails"
+      ],
+      "expected_result": "State transitions from '校验中' to '结算失败'. Remains at '结算失败'."
+    },
+    {
+      "tc_id": "TC-26",
+      "req_id": "REQ-11",
+      "coverage_id": "CI-26",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "User submits a settlement request with a client-supplied final_amount field (e.g., final_amount=1.00), but actual amount should be 100.00.",
+      "test_data": "Settlement request includes final_amount=1.00. Cart: [{'pid':'P01','price':50.00,'qty':2,'stock':10}]",
+      "steps": [
+        "Send settlement request with the malicious final_amount",
+        "Capture server response"
+      ],
+      "expected_result": "System ignores client final_amount, recalculates from server data: order_original_price=100.00, shipping=0.00, final_amount=100.00. Response contains correct values."
+    },
+    {
+      "tc_id": "TC-27",
+      "req_id": "REQ-11",
+      "coverage_id": "CI-27",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Same as above but client sends negative final_amount (-50.00) and incorrect product values. Cart is valid.",
+      "test_data": "Cart: [{'pid':'P01','price':30,'qty':3,'stock':10}]  actual order=90, shipping=10, final=100. Client sends final_amount=-50.",
+      "steps": [
+        "Submit request with client_final_amount=-50.00"
+      ],
+      "expected_result": "System computes final_amount=100.00 correctly and returns that. Ignores client value."
+    },
+    {
+      "tc_id": "TC-28",
+      "req_id": "REQ-12",
+      "coverage_id": "CI-28",
+      "test_method": "Equivalence Partitioning",
+      "priority": "Medium",
+      "preconditions": "Single product valid cart, performance monitoring enabled.",
+      "test_data": "Cart: [{'pid':'P01','price':10.00,'qty':1,'stock':100}]",
+      "steps": [
+        "Record start time",
+        "Submit settlement request",
+        "Record end time"
+      ],
+      "expected_result": "Response time is less than 200 milliseconds."
+    },
+    {
+      "tc_id": "TC-29",
+      "req_id": "REQ-12",
+      "coverage_id": "CI-29",
+      "test_method": "Equivalence Partitioning",
+      "priority": "Medium",
+      "preconditions": "Cart with 50 valid products, performance test environment ready.",
+      "test_data": "Generate cart with 50 products: each price between 1-100, qty=1, stock=10.",
+      "steps": [
+        "Record start time",
+        "Submit settlement for 50-product cart",
+        "Record end time"
+      ],
+      "expected_result": "Response time < 200 ms."
+    },
+    {
+      "tc_id": "TC-30",
+      "req_id": "REQ-13",
+      "coverage_id": "CI-30",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Repeat same valid cart request three times.",
+      "test_data": "Cart: [{'pid':'P01','price':25.50,'qty':4,'stock':20}]",
+      "steps": [
+        "Execute settlement request (first time)",
+        "Wait 1 second",
+        "Execute same request again (second time)",
+        "Wait 1 second",
+        "Execute same request again (third time)",
+        "Compare results"
+      ],
+      "expected_result": "All three responses have identical: order_original_price=102.00, shipping=10.00, final_amount=112.00, status='结算成功'."
+    },
+    {
+      "tc_id": "TC-31",
+      "req_id": "REQ-13",
+      "coverage_id": "CI-31",
+      "test_method": "Equivalence Partitioning",
+      "priority": "High",
+      "preconditions": "Same valid cart, test at different times (e.g., morning and evening).",
+      "test_data": "Cart: [{'pid':'P01','price':99.99,'qty':2,'stock':5}]",
+      "steps": [
+        "Submit settlement at time T1 (e.g., 09:00)",
+        "Record result",
+        "Submit settlement at time T2 (e.g., 21:00) with same input",
+        "Compare both results"
+      ],
+      "expected_result": "Results are identical: order_original_price=199.98, shipping=10.00 (since <200), final_amount=209.98. Status success."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+﻿requirement_id,risk_score,priority,reason
+REQ-1,8,High,Core checkout functionality; failure blocks entire purchase flow.
+REQ-2,9,High,Input validation critical to prevent invalid transactions and ensure data integrity.
+REQ-3,6,Medium,Error messages important for user guidance but not as critical as core validation.
+REQ-4,9,High,Accurate price calculation essential for financial correctness.
+REQ-5,8,High,Shipping fee logic impacts final cost; errors cause over/undercharging.
+REQ-6,9,High,Enforcing correct order of operations prevents invalid data processing.
+REQ-7,9,High,Final amount calculation must be precise to avoid financial discrepancies.
+REQ-8,8,High,Successful checkout flow is core functionality.
+REQ-9,7,High,Failure handling ensures no data loss and proper user feedback.
+REQ-10,8,High,State management ensures correct flow and prevents inconsistent states.
+REQ-11,10,High,Trusting client-side data could lead to financial fraud; server-side validation is a security must.
+REQ-12,5,Medium,Performance requirement; failure degrades UX but not data integrity.
+REQ-13,7,High,Consistency crucial for user trust and system reliability.
